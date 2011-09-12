@@ -178,6 +178,7 @@ exports.database.prototype.doBulk = function (bulk, callback)
     , op
     , ctr = 1
     , starttime = (new Date()).getTime()
+    , count = 0
     , values = [];
 
   for(var i in bulk)
@@ -192,6 +193,7 @@ exports.database.prototype.doBulk = function (bulk, callback)
       sqlPart = 'DELETE FROM "store" WHERE "key" =' + escape(op.key) + ';';
     }
     sql.push(sqlPart);
+    count += 1
   }
   sql.push('COMMIT;');
   sql = sql.join('\n');
@@ -202,6 +204,7 @@ exports.database.prototype.doBulk = function (bulk, callback)
       self.db.query('ROLLBACK;');
     }
     self.emit('metric.bulk', (new Date()).getTime() - starttime);
+    self.emit('metric.bulk.count', count);
     callback(err);
   });
 }
