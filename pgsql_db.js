@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-var async = require('async')
-  , pg = require("pg")
-  , Client;
 
-//if(pg.native) pg = pg.native;
+var util = require('util')
+  , events = require('events')
+  , async = require('async')
+  , pg = require("pg");
+
 Client = pg.Client;
 
 // TODO: Seriously?!! No escape function?
@@ -53,8 +54,8 @@ var upsertFunc =  '' +
 var createQuery = {
     name: 'create'
     , text: 'CREATE TABLE "store" ( ' +
-        '"key" VARCHAR( 100 ) NOT NULL PRIMARY KEY,' + 
-        '"value" TEXT NOT NULL ' + 
+        '"key" VARCHAR( 100 ) NOT NULL PRIMARY KEY,' +
+        '"value" TEXT NOT NULL ' +
         ' );'
   }
   , getQuery = {
@@ -73,12 +74,14 @@ var createQuery = {
 exports.database = function(settings)
 {
   this.db = new Client(settings);
+  events.EventEmitter.apply(this, arguments);
   this.settings = settings;
 
   this.settings.cache = 1000;
   this.settings.writeInterval = 100;
   this.settings.json = true;
 }
+util.inherits(exports.database, events.EventEmitter);
 
 exports.database.prototype.init = function(callback)
 {
@@ -130,12 +133,12 @@ exports.database.prototype.get = function (key, callback)
   self.db.query(getQuery, [key], function(err,results)
   {
     var value = null;
-   
+
     if(!err && results.rows.length == 1)
     {
       value = results.rows[0].value;
     }
-    self.emit('metric.get', (new Date()).getTime() - starttime)
+    self.emit('metric.get', (new Date()).getTime() - starttime);
     callback(err,value);
   });
 }
@@ -151,24 +154,24 @@ exports.database.prototype.set = function (key, value, callback)
 
   // Careful! Ordering of key and value is reversed in sql
   self.db.query(setQuery, [key, value], function () {
-    self.emit('metric.set', (new Date()).getTime() - starttime)
-    callback.apply(this, arguments)
+    self.emit('metric.set', (new Date()).getTime() - starttime);
+    callback.apply(this, arguments);
   });
 }
 
 exports.database.prototype.remove = function (key, callback)
 {
-  var self this
+  var self = this
     , starttime = (new Date()).getTime()
     ;
   self.db.query(removeQuery, [key], function () {
-    self.emit('metric.remove', (new Date()).getTime() - starttime)
-    callback.apply(this, arguments)
+    self.emit('metric.remove', (new Date()).getTime() - starttime);
+    callback.apply(this, arguments);
   });
 }
 
 exports.database.prototype.doBulk = function (bulk, callback)
-{ 
+{
   var self = this
     , sql = ['BEGIN;']
     , sqlPart
@@ -193,13 +196,12 @@ exports.database.prototype.doBulk = function (bulk, callback)
   sql.push('COMMIT;');
   sql = sql.join('\n');
 
-  self.db.query(sql, function(err) {  
-    self.
+  self.db.query(sql, function(err) {
     if(err)
     {
       self.db.query('ROLLBACK;');
     }
-    self.emit('metric.bulk', (new Date()).getTime() - starttime)
+    self.emit('metric.bulk', (new Date()).getTime() - starttime);
     callback(err);
   });
 }
